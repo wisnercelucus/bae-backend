@@ -1,28 +1,20 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import Product
-from .serializers import ProductSerializer
-from .products import products
+from .serializers import (ProductSerializer,
+    UserSerializer,
+    UserSerializerWithToken
+    )
+from django.contrib.auth.models import User
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework import status
+from django.contrib.auth.hashers import make_password
+
 # Create your views here.
-
-def insertProducts(user):
-    for p in products:
-        if p['_id'] == '1':
-            continue
-        prod = Product()
-        prod.name = p['name']
-        prod.description = p['description']
-        prod.price = p['price']
-        prod.countInStock = p['countInStock']
-        prod.rating = p['rating']
-        prod.brand = p['brand']
-        prod.category = p['category']
-        prod.numReviews = p['numReviews']
-        prod.user = user
-        prod.save()
-
 
 @api_view(['GET'])
 def getRoutes(request):
@@ -42,7 +34,9 @@ def getRoutes(request):
 def getProducts(request):
     products = Product.objects.all()
     serailizer = ProductSerializer(products, many=True).data
+
     return Response(serailizer)
+
 
 @api_view(['GET'])    
 def getProduct(request, pk):
@@ -50,3 +44,58 @@ def getProduct(request, pk):
     serailizer = ProductSerializer(product).data
 
     return Response(serailizer)
+
+@api_view(['POST'])
+def register(request):
+    data = request.data
+
+    try:
+
+        user = User.objects.create(
+            first_name=data['name'],
+            username=data['email'],
+            email=data['email'],
+            password=make_password(data['password'])
+        )
+
+
+        serializer = UserSerializerWithToken(user).data
+
+        return Response(serializer)
+    except:
+        message = "Email already exist. Unable to create the account."
+        context = {'message': message}
+        return Response(context, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getUserProfile(request):
+    user = request.user
+    serailizer = UserSerializer(user, many=False).data
+    return Response(serailizer)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])    
+def getUsers(request):
+    users = User.objects.all()
+    serailizer = UserSerializer(users, many=True).data
+
+    return Response(serailizer)
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        serializer = UserSerializerWithToken(self.user).data
+
+        for k, v in serializer.items():
+            data[k] = v
+
+        return data
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
