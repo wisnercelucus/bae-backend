@@ -1,10 +1,8 @@
-from django.shortcuts import render
-from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Product
-from .serializers import (ProductSerializer,
+
+from base.serializers import (
     UserSerializer,
     UserSerializerWithToken
     )
@@ -15,35 +13,6 @@ from rest_framework import status
 from django.contrib.auth.hashers import make_password
 
 # Create your views here.
-
-@api_view(['GET'])
-def getRoutes(request):
-    routes = [
-        'api/products/',
-        'api/products/create/',
-        'api/products/upload/',
-        'api/products/<id>/reviews/',
-        'api/products/top/',
-        'api/products/<id>/',
-        'api/products/delete/<id>/',
-        'api/products/update/<id>/',
-    ]
-    return Response(routes)
-
-@api_view(['GET'])    
-def getProducts(request):
-    products = Product.objects.all()
-    serailizer = ProductSerializer(products, many=True).data
-
-    return Response(serailizer)
-
-
-@api_view(['GET'])    
-def getProduct(request, pk):
-    product = Product.objects.filter(pk=int(pk)).first()
-    serailizer = ProductSerializer(product).data
-
-    return Response(serailizer)
 
 @api_view(['POST'])
 def register(request):
@@ -64,9 +33,27 @@ def register(request):
         return Response(serializer)
     except:
         message = "Email already exist. Unable to create the account."
-        context = {'message': message}
+        context = {'detail': message}
         return Response(context, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def updateUserProfile(request):
+    user = request.user
+    serailizer = UserSerializerWithToken(user, many=False).data
+
+    data = request.data
+    user.first_name = data['name']
+    user.username = data['email']
+    user.email = data['email']
+    
+    if data['password'] != '':
+        user.password = make_password(data['password'])
+    
+    user.save()
+
+    return Response(serailizer)
 
 
 @api_view(['GET'])
