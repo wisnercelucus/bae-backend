@@ -10,10 +10,25 @@ from base.serializers import ProductSerializer
 from django.db.models import Q
 
 from rest_framework import status
+from base.products import products
 
+def createMockProduct():
+    for p in products:
+        pr = Product()
+        pr.name = p['name']
+        pr.image = p['image']
+        pr.description = p['description']
+        pr.brand = p['brand']
+        pr.category = p['category']
+        pr.price = p['price']
+        pr.countInStock = p['countInStock']
+        pr.rating = p['rating']
+        pr.numReviews = p['numReviews']
+        pr.save()
 
 @api_view(['GET'])
 def getProducts(request):
+    #createMockProduct()
     query = request.query_params.get('keyword')
     if query == None:
         query = ''
