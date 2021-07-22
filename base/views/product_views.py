@@ -7,6 +7,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from base.models import Product, Review
 from base.serializers import ProductSerializer
+from django.db.models import Q
 
 from rest_framework import status
 
@@ -17,7 +18,7 @@ def getProducts(request):
     if query == None:
         query = ''
 
-    products = Product.objects.filter(
+    products = Product.objects.filter(~Q(name='Sample Name'),
         name__icontains=query).order_by('-createdAt')
 
     page = request.query_params.get('page')
@@ -57,6 +58,8 @@ def getProduct(request, pk):
 @permission_classes([IsAdminUser])
 def createProduct(request):
     user = request.user
+
+    #print(request.data)
 
     product = Product.objects.create(
         user=user,
